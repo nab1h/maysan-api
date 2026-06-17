@@ -143,12 +143,12 @@ class TapPaymentService extends BasePaymentService implements PaymentGatewayInte
         ];
     }
 
-    public function callBack(Request $request): bool
+    public function callBack(Request $request): ?string
     {
         $chargeId = $request->input('tap_id');
 
         if (!$chargeId)
-            return false;
+            return null;
 
         // الاستعلام عن حالة الدفع من Tap
         $response = $this->buildRequest('GET', "/v2/charges/$chargeId");
@@ -180,7 +180,7 @@ class TapPaymentService extends BasePaymentService implements PaymentGatewayInte
                 ]);
             }
 
-            return true;
+            return $transactionId;
         }
 
         if (isset($response_data['data']['status']) && in_array($response_data['data']['status'], ['FAILED', 'DECLINED', 'VOID', 'ABANDONED'])) {
@@ -202,6 +202,6 @@ class TapPaymentService extends BasePaymentService implements PaymentGatewayInte
             }
         }
 
-        return false;
+        return null;
     }
 }

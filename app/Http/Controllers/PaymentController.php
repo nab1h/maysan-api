@@ -45,18 +45,22 @@ class PaymentController extends Controller
 
     public function callBack(Request $request): \Illuminate\Http\RedirectResponse
     {
-        $response = $this->paymentService->callBack($request);
+        $transactionId = $this->paymentService->callBack($request);
 
-        if ($response) {
-            return redirect()->route('payment.success');
+        if ($transactionId) {
+            return redirect()->route('payment.success', [
+                'transaction_id' => $transactionId,
+            ]);
         }
 
         return redirect()->route('payment.failed');
     }
 
-    public function success()
+    public function success(Request $request)
     {
-        return view('payment-success');
+        return view('payment-success', [
+            'transactionId' => $request->query('transaction_id'),
+        ]);
     }
 
     public function failed()
