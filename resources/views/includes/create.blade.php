@@ -178,26 +178,6 @@
                                     </div>
                                 </div>
 
-                                <!-- خيارات الدفع -->
-                                <div class="border-t border-[#135158]/10 p-4">
-                                    <p class="text-xs text-gray-500 mb-3 font-medium">اختاري طريقة الحجز:</p>
-                                    <div class="grid grid-cols-2 gap-3">
-                                        <label class="relative cursor-pointer">
-                                            <input type="radio" name="payment_method_type" value="cash" class="peer absolute opacity-0" checked>
-                                            <div class="border-2 border-gray-200 peer-checked:border-[#135158] peer-checked:bg-[#135158]/5 rounded-xl p-3 transition-all duration-300 text-center">
-                                                <span class="text-xs font-bold text-gray-700 block">حجز بدون دفع</span>
-                                                <span class="text-[10px] text-gray-400">ندفع في العيادة</span>
-                                            </div>
-                                        </label>
-                                        <label class="relative cursor-pointer">
-                                            <input type="radio" name="payment_method_type" value="online" id="onlinePaymentRadio" class="peer absolute opacity-0">
-                                            <div class="border-2 border-gray-200 peer-checked:border-[#d4a853] peer-checked:bg-[#d4a853]/5 rounded-xl p-3 transition-all duration-300 text-center">
-                                                <span class="text-xs font-bold text-gray-700 block">دفع إلكتروني</span>
-                                                <span class="text-[10px] text-gray-400">آمن ومشفّر</span>
-                                            </div>
-                                        </label>
-                                    </div>
-                                </div>
                             </div>
 
                             <!-- التاريخ والوقت -->
@@ -245,6 +225,39 @@
                             <div class="sm:col-span-2">
                                 <label class="block text-sm font-medium text-gray-700 mb-1">رسالتك (اختياري)</label>
                                 <textarea name="message" rows="3" placeholder="اكتب رسالتك أو استفسارك هنا..." class="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#135158] transition text-sm resize-none"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4 pt-4 border-t border-gray-100">
+                        <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                            <span class="w-7 h-7 rounded-full bg-[#135158] text-white flex items-center justify-center text-xs">3</span>
+                            طريقة الدفع
+                        </h3>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <label class="relative cursor-pointer">
+                                <input type="radio" name="payment_method_type" value="cash" class="peer absolute opacity-0" checked>
+                                <div class="border-2 border-gray-200 peer-checked:border-[#135158] peer-checked:bg-[#135158]/5 rounded-xl p-3 transition-all duration-300 text-center">
+                                    <span class="text-xs font-bold text-gray-700 block">حجز بدون دفع</span>
+                                    <span class="text-[10px] text-gray-400">الدفع في العيادة</span>
+                                </div>
+                            </label>
+                            <label class="relative cursor-pointer">
+                                <input type="radio" name="payment_method_type" value="online" id="onlinePaymentRadio" class="peer absolute opacity-0">
+                                <div class="border-2 border-gray-200 peer-checked:border-[#d4a853] peer-checked:bg-[#d4a853]/5 rounded-xl p-3 transition-all duration-300 text-center">
+                                    <span class="text-xs font-bold text-gray-700 block">دفع إلكتروني</span>
+                                    <span class="text-[10px] text-gray-400">تحويل لبوابة الدفع</span>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div id="paymentAmountWrapper" class="hidden">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">مبلغ الحجز</label>
+                            <div class="relative">
+                                <input type="number" name="amount" id="paymentAmountInput" min="1" step="0.01" inputmode="decimal" placeholder="مثال: 100" disabled
+                                    class="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-xl px-4 py-2.5 pl-14 focus:outline-none focus:ring-2 focus:ring-[#135158] transition text-sm text-left">
+                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">ر.س</span>
                             </div>
                         </div>
                     </div>
@@ -339,6 +352,8 @@
         const onlinePayBtn = document.getElementById('onlinePayBtn');
         const payAmount = document.getElementById('payAmount');
         const securePayNote = document.getElementById('securePayNote');
+        const paymentAmountWrapper = document.getElementById('paymentAmountWrapper');
+        const paymentAmountInput = document.getElementById('paymentAmountInput');
 
         let selectedOfferData = null;
 
@@ -473,7 +488,9 @@
 
                 offerActiveBadge.classList.toggle('hidden', selectedOfferData.active !== '1');
                 offerDetailsCard.classList.remove('hidden');
-                payAmount.textContent = selectedOfferData.price;
+                if (!paymentAmountInput.value) {
+                    paymentAmountInput.value = selectedOfferData.price;
+                }
                 updateSubmitButton();
             } else {
                 hideOfferCard();
@@ -490,11 +507,21 @@
         document.querySelectorAll('input[name="payment_method_type"]').forEach(radio => {
             radio.addEventListener('change', updateSubmitButton);
         });
+        paymentAmountInput.addEventListener('input', updateSubmitButton);
 
         function updateSubmitButton() {
             const isOnline = document.querySelector('input[name="payment_method_type"]:checked')?.value === 'online';
+            const amount = paymentAmountInput.value;
 
-            if (selectedOfferData && isOnline) {
+            paymentAmountWrapper.classList.toggle('hidden', !isOnline);
+            paymentAmountInput.disabled = !isOnline;
+            paymentAmountInput.required = isOnline;
+            const currentPayAmount = document.getElementById('payAmount');
+            if (currentPayAmount) {
+                currentPayAmount.textContent = amount || '0';
+            }
+
+            if (isOnline) {
                 submitBtn.classList.add('hidden');
                 onlinePayBtn.classList.remove('hidden');
                 securePayNote.classList.remove('hidden');
@@ -510,17 +537,13 @@
         onlinePayBtn.addEventListener('click', handleOnlinePayment);
 
         function handleOnlinePayment() {
-            if (!selectedOfferData) {
-                showError(['يرجى اختيار عرض أولاً']);
-                return;
-            }
-
             const name = form.querySelector('[name="name"]').value.trim();
             const phone = form.querySelector('[name="phone"]').value.trim();
             const email = form.querySelector('[name="email"]').value.trim();
             const branchId = branchSelect.value;
             const reservationDate = form.querySelector('[name="reservation_date"]').value;
             const reservationTime = form.querySelector('[name="reservation_time"]').value;
+            const amount = paymentAmountInput.value;
 
             let errors = [];
             if (!name) errors.push('الاسم بالكامل مطلوب');
@@ -529,6 +552,7 @@
             if (!branchId) errors.push('يرجى اختيار الفرع');
             if (!reservationDate) errors.push('يرجى اختيار التاريخ المفضل');
             if (!reservationTime) errors.push('يرجى اختيار الوقت المفضل');
+            if (!amount || Number(amount) < 1) errors.push('يرجى كتابة مبلغ الحجز');
 
             if (errors.length > 0) {
                 showError(errors);
@@ -546,19 +570,21 @@
                         'Accept': 'application/json',
                     },
                     body: JSON.stringify({
-                        offer_id: selectedOfferData.id,
-                        amount: selectedOfferData.price,
-                        description: selectedOfferData.title,
+                        offer_id: selectedOfferData?.id || null,
+                        amount: amount,
+                        description: selectedOfferData?.title || 'حجز موعد - عيادة ميثان',
                         customer_name: name,
                         customer_email: email,
                         customer_phone: phone,
                         national_id: form.querySelector('[name="national_id"]').value || null,
+                        location_id: locationSelect.value || null,
                         branch_id: branchId,
                         department_id: departmentSelect.value || null,
                         service_id: serviceSelect.value || null,
                         doctor_id: doctorSelect.value || null,
                         reservation_date: reservationDate,
                         reservation_time: reservationTime,
+                        message: form.querySelector('[name="message"]').value || null,
                     })
                 })
                 .then(response => response.ok ? response.json() : response.json().then(err => Promise.reject(err)))
@@ -584,7 +610,7 @@
                 doctorSelect.value = '';
             }
 
-            if (selectedOfferData && document.querySelector('input[name="payment_method_type"]:checked')?.value === 'online') {
+            if (document.querySelector('input[name="payment_method_type"]:checked')?.value === 'online') {
                 handleOnlinePayment();
                 return;
             }
@@ -630,9 +656,10 @@
             if (textEl) textEl.textContent = text;
 
             if (!spinner && btn === onlinePayBtn) {
+                const amount = paymentAmountInput.value || '0';
                 btn.innerHTML = isLoading ?
                     `<svg class="animate-spin h-5 w-5 text-white inline-block ml-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> ${text}` :
-                    `<i data-lucide="lock" class="w-5 h-5"></i><span>ادفعي إلكترونياً — <span id="payAmount">${selectedOfferData?.price || ''}</span> ر.س</span>`;
+                    `<i data-lucide="lock" class="w-5 h-5"></i><span>ادفعي إلكترونياً — <span id="payAmount">${amount}</span> ر.س</span>`;
                 if (!isLoading) lucide.createIcons();
             }
         }
@@ -644,6 +671,7 @@
             successActions.classList.remove('hidden');
             thankYouMsg.classList.add('hidden');
             toggleLoading(submitBtn, false, 'تأكيد الحجز', submitSpinner, submitText);
+            updateSubmitButton();
         }
 
         btnAnotherBooking.addEventListener('click', () => {

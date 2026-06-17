@@ -24,8 +24,14 @@ class PaymentController extends Controller
             'customer_email' => 'required|email',
             'customer_phone' => 'required|string',
             'national_id' => 'nullable|string|max:10',
+            'location_id' => 'nullable|exists:locations,id',
             'branch_id' => 'nullable|exists:branches,id',
+            'department_id' => 'nullable|exists:departments,id',
             'service_id' => 'nullable|exists:services,id',
+            'doctor_id' => 'nullable|exists:doctors,id',
+            'reservation_date' => 'nullable|date|after_or_equal:today',
+            'reservation_time' => 'nullable',
+            'message' => 'nullable|string',
         ]);
 
         $result = $this->paymentService->sendPayment($request);
