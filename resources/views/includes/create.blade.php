@@ -140,8 +140,8 @@
                                     <option value="">اختاري الفرع أولاً</option>
                                     @foreach($offers as $offer)
                                     @php
-                                    $discount = $offer->old_price > 0 ? round((($offer->old_price - $offer->price) / $offer->old_price) * 100) : 0;
-                                    $isActive = now()->gte($offer->start_date) && now()->lte($offer->end_date);
+    $discount = $offer->old_price > 0 ? round((($offer->old_price - $offer->price) / $offer->old_price) * 100) : 0;
+    $isActive = now()->gte($offer->start_date) && now()->lte($offer->end_date);
                                     @endphp
                                     <option value="{{ $offer->id }}"
                                         data-branch="{{ $offer->branch_id }}"
@@ -228,6 +228,13 @@
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">رقم الجوال</label>
                                 <input required type="tel" name="phone" placeholder="05xxxxxxxx" dir="ltr" class="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#135158] transition text-sm text-left">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">رقم الهوية / الإقامة</label>
+                                <input required type="text" name="national_id" inputmode="numeric" pattern="[0-9]*" maxlength="10"
+                                    placeholder="10xxxxxxxx" dir="ltr"
+                                    class="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#135158] transition text-sm text-left">
                             </div>
 
                             <div>
@@ -545,6 +552,7 @@
                         customer_name: name,
                         customer_email: email,
                         customer_phone: phone,
+                        national_id: form.querySelector('[name="national_id"]').value || null,
                         branch_id: branchId,
                         department_id: departmentSelect.value || null,
                         service_id: serviceSelect.value || null,

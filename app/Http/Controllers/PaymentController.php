@@ -23,6 +23,9 @@ class PaymentController extends Controller
             'customer_name' => 'required|string',
             'customer_email' => 'required|email',
             'customer_phone' => 'required|string',
+            'national_id' => 'nullable|string|max:10',
+            'branch_id' => 'nullable|exists:branches,id',
+            'service_id' => 'nullable|exists:services,id',
         ]);
 
         $result = $this->paymentService->sendPayment($request);
@@ -36,7 +39,7 @@ class PaymentController extends Controller
 
         return response()->json([
             'success' => false,
-            'message' => 'حدث خطأ أثناء إنشاء عملية الدفع',
+            'message' => $result['message'] ?? 'حدث خطأ أثناء إنشاء عملية الدفع',
         ], 400);
     }
 

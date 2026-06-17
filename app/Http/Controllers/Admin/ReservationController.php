@@ -22,7 +22,7 @@ class ReservationController extends Controller
         $user = auth()->user();
 
         $query = Reservation::where('is_archive', 0)
-            ->with(['location', 'branch', 'department', 'service', 'doctor', 'offer']); // ✅ أضفنا offer
+            ->with(['location', 'branch', 'department', 'service', 'doctor', 'offer']);
 
         if ($user->role !== 'admin' && $user->branch_id) {
             $query->where('branch_id', $user->branch_id);
@@ -30,22 +30,21 @@ class ReservationController extends Controller
             $query->whereRaw('1 = 0');
         }
 
+        // ✅ استخدام $request->input() عشان نتجنب تحذيرات الـ IDE
         if ($request->filled('status')) {
-            $query->where('status', $request->status);
+            $query->where('status', $request->input('status'));
         }
 
-        // ✅ فلتر حسب حالة الدفع
         if ($request->filled('payment_status')) {
-            $query->where('payment_status', $request->payment_status);
+            $query->where('payment_status', $request->input('payment_status'));
         }
 
-        // ✅ فلتر حسب طريقة الدفع
         if ($request->filled('payment_method')) {
-            $query->where('payment_method', $request->payment_method);
+            $query->where('payment_method', $request->input('payment_method'));
         }
 
         if ($request->filled('search_id')) {
-            $query->where('id', $request->search_id);
+            $query->where('id', $request->input('search_id'));
         }
 
         $reservations = $query->latest()->paginate(10);
@@ -58,7 +57,6 @@ class ReservationController extends Controller
         $completed = Reservation::where('status', 'completed')->where($branchCondition)->count();
         $archive = Reservation::where('is_archive', true)->where($branchCondition)->count();
 
-        // ✅ إحصائيات الدفع
         $paidCount = Reservation::where('payment_status', 'paid')->where($branchCondition)->count();
         $onlineCount = Reservation::where('payment_method', 'online')->where($branchCondition)->count();
 
@@ -96,11 +94,12 @@ class ReservationController extends Controller
     public function create()
     {
         $locations = Location::all();
-        $branches = Branch::all();
+        $branches = Branch::with('departments')->get(); // ✅ جلب الأقسام مع الفروع
         $departments = Department::all();
         $services = Service::all();
         $doctors = Doctor::all();
-        $offers = Offer::all(); // ✅ أضفنا العروض
+        $offers = Offer::all();
+        $selectedBranch = request('branch_id'); // ✅ للتحديد التلقائي من الرابط
 
         return view('admin.reservations.create', compact(
             'locations',
@@ -108,7 +107,8 @@ class ReservationController extends Controller
             'departments',
             'services',
             'doctors',
-            'offers'
+            'offers',
+            'selectedBranch'
         ));
     }
 
@@ -120,6 +120,7 @@ class ReservationController extends Controller
         $validated = $request->validate([
             'name'              => 'required|string|max:255',
             'phone'             => 'required|string|max:20',
+            'national_id'       => 'nullable|string|max:10', // ✅ تمت الإضافة
             'email'             => 'nullable|email|max:255',
             'location_id'       => 'nullable|exists:locations,id',
             'branch_id'         => 'nullable|exists:branches,id',
@@ -134,22 +135,19 @@ class ReservationController extends Controller
             'payment_method_type' => 'nullable|in:cash,online',
         ]);
 
-        // ✅ تحديد طريقة الدفع وحالته
-        $paymentMethod = $request->payment_method_type ?? 'cash';
+        $paymentMethod = $request->input('payment_method_type', 'cash');
         $paymentStatus = 'unpaid';
 
         if ($paymentMethod === 'online') {
             $paymentStatus = 'pending';
         }
 
-        // ✅ إضافة الحقول الجديدة للبيانات المعتمدة
         $validated['status'] = 'pending';
         $validated['is_archive'] = 0;
         $validated['is_delete'] = 0;
         $validated['payment_method'] = $paymentMethod;
         $validated['payment_status'] = $paymentStatus;
 
-        // ✅ إنشاء حجز واحد فقط
         Reservation::create($validated);
 
         return response()->json([
@@ -166,7 +164,7 @@ class ReservationController extends Controller
         $reservation = Reservation::findOrFail($id);
 
         $locations = Location::all();
-        $branches = Branch::all();
+        $branches = Branch::with('departments')->get();
         $departments = Department::all();
         $services = Service::all();
         $doctors = Doctor::all();
@@ -193,6 +191,7 @@ class ReservationController extends Controller
         $validated = $request->validate([
             'name'              => 'required|string|max:255',
             'phone'             => 'required|string|max:20',
+            'national_id'       => 'nullable|string|max:10', // ✅ تمت الإضافة
             'email'             => 'nullable|email|max:255',
             'location_id'       => 'nullable|exists:locations,id',
             'branch_id'         => 'nullable|exists:branches,id',
@@ -234,14 +233,14 @@ class ReservationController extends Controller
     public function archive(Request $request)
     {
         $query = Reservation::where('is_archive', 1)
-            ->with(['location', 'branch', 'department', 'service', 'doctor', 'offer']); // ✅ أضفنا offer
+            ->with(['location', 'branch', 'department', 'service', 'doctor', 'offer']);
 
         if ($request->filled('status')) {
-            $query->where('status', $request->status);
+            $query->where('status', $request->input('status'));
         }
 
         if ($request->filled('search_id')) {
-            $query->where('id', $request->search_id);
+            $query->where('id', $request->input('search_id'));
         }
 
         $reservations = $query->latest()->paginate(10);
@@ -265,7 +264,7 @@ class ReservationController extends Controller
     {
         $reservations = Reservation::where('is_archive', 1)
             ->where('is_delete', 0)
-            ->with(['location', 'branch', 'department', 'service', 'doctor', 'offer']) // ✅ أضفنا offer
+            ->with(['location', 'branch', 'department', 'service', 'doctor', 'offer'])
             ->latest()
             ->paginate(10);
 
