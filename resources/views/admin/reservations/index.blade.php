@@ -109,22 +109,11 @@
                     <table class="w-full text-sm text-gray-700">
                         <thead class="bg-gray-50 text-gray-500 text-xs uppercase border-b border-gray-200">
                             <tr>
-                                <th class="px-4 py-4 text-start">#ID</th>
-                                <th class="px-4 py-4 text-start">العرض</th>
-                                <th class="px-4 py-4 text-start">القسم</th>
-                                <th class="px-4 py-4 text-start">الخدمة</th>
-                                <th class="px-4 py-4 text-start">المدينة</th>
-                                <th class="px-4 py-4 text-start">الفرع</th>
-                                <th class="px-4 py-4 text-start">الطبيب</th>
-                                <th class="px-4 py-4 text-start">الاسم بالكامل</th>
-                                <th class="px-4 py-4 text-start">الجوال</th>
-                                <th class="px-4 py-4 text-start">البريد</th>
-                                <th class="px-4 py-4 text-start">التاريخ</th>
-                                <th class="px-4 py-4 text-start">الوقت</th>
-                                <th class="px-4 py-4 text-start">الرسالة</th>
-                                <th class="px-4 py-4 text-start">حالة الحجز</th>
-                                <th class="px-4 py-4 text-start">طريقة الدفع</th>
-                                <th class="px-4 py-4 text-start">حالة الدفع</th>
+                                <th class="px-4 py-4 text-start w-20">#ID</th>
+                                <th class="px-4 py-4 text-start min-w-[220px]">بيانات العميل</th>
+                                <th class="px-4 py-4 text-start min-w-[240px]">تفاصيل العيادة</th>
+                                <th class="px-4 py-4 text-start min-w-[220px]">الموعد والرسالة</th>
+                                <th class="px-4 py-4 text-start min-w-[190px]">الحالة والدفع</th>
                                 <th class="px-4 py-4 text-center">إجراءات</th>
                             </tr>
                         </thead>
@@ -134,97 +123,96 @@
                             <tr class="border-b border-gray-100 hover:bg-gray-50/50 transition duration-200">
                                 <td class="px-4 py-4 font-mono text-xs text-gray-400">#{{ $reservation->id }}</td>
 
-                                <!-- ✅ عمود العرض -->
-                                <td class="px-4 py-4 whitespace-nowrap">
-                                    @if($reservation->offer)
-                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#d4a853]/10 text-[#b8841f] text-xs font-bold">
-                                        <i class="fas fa-gift text-[10px]"></i>
-                                        {{ Str::limit($reservation->offer->title, 20) }}
-                                    </span>
-                                    @else
-                                    <span class="text-gray-300 text-xs">—</span>
-                                    @endif
-                                </td>
+                                @php
+                                $statusClasses = [
+                                'pending' => 'bg-yellow-50 text-yellow-700 border border-yellow-200',
+                                'confirmed' => 'bg-blue-50 text-blue-700 border border-blue-200',
+                                'cancelled' => 'bg-red-50 text-red-700 border border-red-200',
+                                'completed' => 'bg-green-50 text-green-700 border border-green-200',
+                                ];
+                                $statusLabels = [
+                                'pending' => 'قيد الانتظار',
+                                'confirmed' => 'مؤكد',
+                                'cancelled' => 'ملغي',
+                                'completed' => 'مكتمل',
+                                ];
+                                $paymentStatusClasses = [
+                                'unpaid' => 'bg-gray-50 text-gray-500 border border-gray-200',
+                                'pending' => 'bg-amber-50 text-amber-700 border border-amber-200',
+                                'paid' => 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+                                'failed' => 'bg-red-50 text-red-600 border border-red-200',
+                                ];
+                                $paymentStatusLabels = [
+                                'unpaid' => 'غير مدفوع',
+                                'pending' => 'بانتظار الدفع',
+                                'paid' => 'مدفوع ✓',
+                                'failed' => 'فشل الدفع',
+                                ];
+                                @endphp
 
-                                <td class="px-4 py-4 text-gray-600 whitespace-nowrap">{{ $reservation->department->name ?? '-' }}</td>
-                                <td class="px-4 py-4 text-gray-600 whitespace-nowrap">{{ $reservation->service->name ?? '-' }}</td>
-                                <td class="px-4 py-4 text-gray-600 whitespace-nowrap">{{ $reservation->location->name ?? '-' }}</td>
-                                <td class="px-4 py-4 text-gray-600 whitespace-nowrap">{{ $reservation->branch->name ?? '-' }}</td>
-                                <td class="px-4 py-4 text-gray-900 font-medium whitespace-nowrap">{{ $reservation->doctor->name ?? '-' }}</td>
-
-                                <td class="px-4 py-4 text-gray-900 font-medium whitespace-nowrap">{{ $reservation->name }}</td>
-                                <td class="px-4 py-4 text-gray-600 whitespace-nowrap" dir="ltr">{{ $reservation->phone }}</td>
-                                <td class="px-4 py-4 text-gray-600 text-xs">{{ $reservation->email ?? '-' }}</td>
-
-                                <td class="px-4 py-4 text-gray-600 whitespace-nowrap">{{ $reservation->reservation_date }}</td>
-                                <td class="px-4 py-4 text-gray-600" dir="ltr">{{ \Carbon\Carbon::parse($reservation->reservation_time)->format('H:i') }}</td>
-
-                                <td class="px-4 py-4 text-gray-600 text-xs max-w-[200px] truncate" title="{{ $reservation->message ?? '' }}">
-                                    {{ $reservation->message ?? '-' }}
-                                </td>
-
-                                <!-- حالة الحجز -->
                                 <td class="px-4 py-4">
-                                    @php
-                                    $statusClasses = [
-                                    'pending' => 'bg-yellow-50 text-yellow-700 border border-yellow-200',
-                                    'confirmed' => 'bg-blue-50 text-blue-700 border border-blue-200',
-                                    'cancelled' => 'bg-red-50 text-red-700 border border-red-200',
-                                    'completed' => 'bg-green-50 text-green-700 border border-green-200',
-                                    ];
-                                    $statusLabels = [
-                                    'pending' => 'قيد الانتظار',
-                                    'confirmed' => 'مؤكد',
-                                    'cancelled' => 'ملغي',
-                                    'completed' => 'مكتمل',
-                                    ];
-                                    @endphp
-                                    <span class="px-3 py-1 text-xs rounded-full {{ $statusClasses[$reservation->status] ?? 'bg-gray-50 text-gray-700 border border-gray-200' }}">
-                                        {{ $statusLabels[$reservation->status] ?? $reservation->status }}
-                                    </span>
+                                    <div class="space-y-1.5">
+                                        <div class="font-bold text-gray-900">{{ $reservation->name }}</div>
+                                        <div class="text-xs text-gray-600" dir="ltr">{{ $reservation->phone }}</div>
+                                        <div class="text-xs text-gray-500 break-all">{{ $reservation->email ?? '-' }}</div>
+                                    </div>
                                 </td>
 
-                                <!-- ✅ طريقة الدفع -->
-                                <td class="px-4 py-4 whitespace-nowrap">
-                                    @if($reservation->payment_method === 'online')
-                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-purple-50 text-purple-700 border border-purple-200 text-xs font-medium">
-                                        <i class="fas fa-credit-card text-[10px]"></i>
-                                        إلكتروني
-                                    </span>
-                                    @else
-                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-50 text-gray-500 border border-gray-200 text-xs font-medium">
-                                        <i class="fas fa-money-bill-wave text-[10px]"></i>
-                                        كاش
-                                    </span>
-                                    @endif
-                                </td>
-
-                                <!-- ✅ حالة الدفع -->
-                                <td class="px-4 py-4 whitespace-nowrap">
-                                    @php
-                                    $paymentStatusClasses = [
-                                    'unpaid' => 'bg-gray-50 text-gray-500 border border-gray-200',
-                                    'pending' => 'bg-amber-50 text-amber-700 border border-amber-200',
-                                    'paid' => 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-                                    'failed' => 'bg-red-50 text-red-600 border border-red-200',
-                                    ];
-                                    $paymentStatusLabels = [
-                                    'unpaid' => 'غير مدفوع',
-                                    'pending' => 'بانتظار الدفع',
-                                    'paid' => 'مدفوع ✓',
-                                    'failed' => 'فشل الدفع',
-                                    ];
-                                    @endphp
-                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium {{ $paymentStatusClasses[$reservation->payment_status] ?? 'bg-gray-50 text-gray-500 border border-gray-200' }}">
-                                        @if($reservation->payment_status === 'paid')
-                                        <i class="fas fa-check-circle text-[10px]"></i>
-                                        @elseif($reservation->payment_status === 'pending')
-                                        <i class="fas fa-clock text-[10px] animate-pulse"></i>
-                                        @elseif($reservation->payment_status === 'failed')
-                                        <i class="fas fa-times-circle text-[10px]"></i>
+                                <td class="px-4 py-4">
+                                    <div class="space-y-1.5 text-xs text-gray-600">
+                                        <div><span class="font-semibold text-gray-800">القسم:</span> {{ $reservation->department->name ?? '-' }}</div>
+                                        <div><span class="font-semibold text-gray-800">الخدمة:</span> {{ $reservation->service->name ?? '-' }}</div>
+                                        <div><span class="font-semibold text-gray-800">المدينة:</span> {{ $reservation->location->name ?? '-' }}</div>
+                                        <div><span class="font-semibold text-gray-800">الفرع:</span> {{ $reservation->branch->name ?? '-' }}</div>
+                                        <div><span class="font-semibold text-gray-800">الطبيب:</span> {{ $reservation->doctor->name ?? '-' }}</div>
+                                        @if($reservation->offer)
+                                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#d4a853]/10 text-[#b8841f] text-xs font-bold">
+                                            <i class="fas fa-gift text-[10px]"></i>
+                                            {{ Str::limit($reservation->offer->title, 28) }}
+                                        </span>
                                         @endif
-                                        {{ $paymentStatusLabels[$reservation->payment_status] ?? $reservation->payment_status }}
-                                    </span>
+                                    </div>
+                                </td>
+
+                                <td class="px-4 py-4">
+                                    <div class="space-y-1.5 text-xs text-gray-600">
+                                        <div><span class="font-semibold text-gray-800">التاريخ:</span> {{ $reservation->reservation_date }}</div>
+                                        <div><span class="font-semibold text-gray-800">الوقت:</span> <span dir="ltr">{{ \Carbon\Carbon::parse($reservation->reservation_time)->format('H:i') }}</span></div>
+                                        <div class="max-w-[220px] text-gray-500 line-clamp-2" title="{{ $reservation->message ?? '' }}">
+                                            <span class="font-semibold text-gray-800">الرسالة:</span> {{ $reservation->message ?? '-' }}
+                                        </div>
+                                    </div>
+                                </td>
+
+                                <td class="px-4 py-4">
+                                    <div class="flex flex-col items-start gap-2">
+                                        <span class="px-3 py-1 text-xs rounded-full {{ $statusClasses[$reservation->status] ?? 'bg-gray-50 text-gray-700 border border-gray-200' }}">
+                                            {{ $statusLabels[$reservation->status] ?? $reservation->status }}
+                                        </span>
+
+                                        @if($reservation->payment_method === 'online')
+                                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-purple-50 text-purple-700 border border-purple-200 text-xs font-medium">
+                                            <i class="fas fa-credit-card text-[10px]"></i>
+                                            إلكتروني
+                                        </span>
+                                        @else
+                                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-50 text-gray-500 border border-gray-200 text-xs font-medium">
+                                            <i class="fas fa-money-bill-wave text-[10px]"></i>
+                                            كاش
+                                        </span>
+                                        @endif
+
+                                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium {{ $paymentStatusClasses[$reservation->payment_status] ?? 'bg-gray-50 text-gray-500 border border-gray-200' }}">
+                                            @if($reservation->payment_status === 'paid')
+                                            <i class="fas fa-check-circle text-[10px]"></i>
+                                            @elseif($reservation->payment_status === 'pending')
+                                            <i class="fas fa-clock text-[10px] animate-pulse"></i>
+                                            @elseif($reservation->payment_status === 'failed')
+                                            <i class="fas fa-times-circle text-[10px]"></i>
+                                            @endif
+                                            {{ $paymentStatusLabels[$reservation->payment_status] ?? $reservation->payment_status }}
+                                        </span>
+                                    </div>
                                 </td>
 
                                 <td class="px-4 py-4 text-center">
@@ -286,7 +274,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="17" class="text-center py-10 text-gray-500">
+                                <td colspan="6" class="text-center py-10 text-gray-500">
                                     لا توجد حجوزات بهذه الحالة
                                 </td>
                             </tr>
