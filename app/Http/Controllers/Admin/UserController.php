@@ -12,7 +12,10 @@ class UserController extends Controller
 {
     public function index()
     {
-        $users = User::with('branch')->latest()->paginate(10);
+        $users = User::with('branch')
+            ->whereIn('role', ['admin', 'sales'])
+            ->latest()
+            ->paginate(10);
         $branches = Branch::all();
         return view('admin.users.index', compact('users', 'branches'));
     }
