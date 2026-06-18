@@ -95,7 +95,7 @@
                                 <select name="service_id" id="serviceSelect" class="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#135158] transition text-sm">
                                     <option value="">اختاري القسم أولاً</option>
                                     @foreach($services as $service)
-                                    <option value="{{ $service->id }}" data-department="{{ $service->department_id }}" class="service-option">{{ $service->name }}</option>
+                                    <option value="{{ $service->id }}" data-department="{{ $service->department_id }}" data-price="{{ $service->price }}" class="service-option">{{ $service->name }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -253,9 +253,9 @@
                         </div>
 
                         <div id="paymentAmountWrapper" class="hidden">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">مبلغ الحجز</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">مبلغ الدفع</label>
                             <div class="relative">
-                                <input type="number" name="amount" id="paymentAmountInput" min="1" step="0.01" inputmode="decimal" placeholder="مثال: 100" disabled
+                                <input type="text" id="paymentAmountInput" placeholder="اختاري الخدمة أو العرض أولاً" disabled readonly
                                     class="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-xl px-4 py-2.5 pl-14 focus:outline-none focus:ring-2 focus:ring-[#135158] transition text-sm text-left">
                                 <span class="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">ر.س</span>
                             </div>
@@ -439,6 +439,7 @@
             const val = this.value;
             const defaultText = val ? 'اختاري الخدمة' : 'اختاري القسم أولاً';
             populateSelect(serviceSelect, allServices, 'department', val, defaultText);
+            setPaymentAmount();
         });
 
         // ===================================================
@@ -488,9 +489,7 @@
 
                 offerActiveBadge.classList.toggle('hidden', selectedOfferData.active !== '1');
                 offerDetailsCard.classList.remove('hidden');
-                if (!paymentAmountInput.value) {
-                    paymentAmountInput.value = selectedOfferData.price;
-                }
+                setPaymentAmount();
                 updateSubmitButton();
             } else {
                 hideOfferCard();
@@ -500,22 +499,45 @@
         function hideOfferCard() {
             selectedOfferData = null;
             offerDetailsCard.classList.add('hidden');
+            setPaymentAmount();
             updateSubmitButton();
         }
+
+        serviceSelect.addEventListener('change', function() {
+            if (selectedOfferData) {
+                offerSelect.value = '';
+                hideOfferCard();
+            }
+
+            setPaymentAmount();
+        });
 
         // ===== تغيير طريقة الدفع =====
         document.querySelectorAll('input[name="payment_method_type"]').forEach(radio => {
             radio.addEventListener('change', updateSubmitButton);
         });
-        paymentAmountInput.addEventListener('input', updateSubmitButton);
+
+        function getPaymentAmount() {
+            if (selectedOfferData?.price) {
+                return selectedOfferData.price;
+            }
+
+            const selectedService = serviceSelect.options[serviceSelect.selectedIndex];
+            return selectedService?.dataset?.price || '';
+        }
+
+        function setPaymentAmount() {
+            paymentAmountInput.value = getPaymentAmount();
+            updateSubmitButton();
+        }
 
         function updateSubmitButton() {
             const isOnline = document.querySelector('input[name="payment_method_type"]:checked')?.value === 'online';
-            const amount = paymentAmountInput.value;
+            const amount = getPaymentAmount();
 
             paymentAmountWrapper.classList.toggle('hidden', !isOnline);
             paymentAmountInput.disabled = !isOnline;
-            paymentAmountInput.required = isOnline;
+            paymentAmountInput.value = amount;
             const currentPayAmount = document.getElementById('payAmount');
             if (currentPayAmount) {
                 currentPayAmount.textContent = amount || '0';
@@ -543,7 +565,7 @@
             const branchId = branchSelect.value;
             const reservationDate = form.querySelector('[name="reservation_date"]').value;
             const reservationTime = form.querySelector('[name="reservation_time"]').value;
-            const amount = paymentAmountInput.value;
+            const amount = getPaymentAmount();
 
             let errors = [];
             if (!name) errors.push('الاسم بالكامل مطلوب');
@@ -552,7 +574,7 @@
             if (!branchId) errors.push('يرجى اختيار الفرع');
             if (!reservationDate) errors.push('يرجى اختيار التاريخ المفضل');
             if (!reservationTime) errors.push('يرجى اختيار الوقت المفضل');
-            if (!amount || Number(amount) < 1) errors.push('يرجى كتابة مبلغ الحجز');
+            if (!amount || Number(amount) < 1) errors.push('يرجى اختيار خدمة أو عرض له سعر صحيح');
 
             if (errors.length > 0) {
                 showError(errors);
@@ -571,8 +593,7 @@
                     },
                     body: JSON.stringify({
                         offer_id: selectedOfferData?.id || null,
-                        amount: amount,
-                        description: selectedOfferData?.title || 'حجز موعد - عيادة ميثان',
+                        description: selectedOfferData?.title || null,
                         customer_name: name,
                         customer_email: email,
                         customer_phone: phone,
@@ -656,7 +677,7 @@
             if (textEl) textEl.textContent = text;
 
             if (!spinner && btn === onlinePayBtn) {
-                const amount = paymentAmountInput.value || '0';
+                const amount = getPaymentAmount() || '0';
                 btn.innerHTML = isLoading ?
                     `<svg class="animate-spin h-5 w-5 text-white inline-block ml-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> ${text}` :
                     `<i data-lucide="lock" class="w-5 h-5"></i><span>ادفعي إلكترونياً — <span id="payAmount">${amount}</span> ر.س</span>`;

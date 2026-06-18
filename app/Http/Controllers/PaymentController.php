@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Offer;
+use App\Models\Service;
 use App\Services\TapPaymentService;
 use Illuminate\Http\Request;
 
@@ -17,8 +19,7 @@ class PaymentController extends Controller
     public function paymentProcess(Request $request)
     {
         $request->validate([
-            'offer_id' => 'nullable',
-            'amount' => 'required|numeric|min:1',
+            'offer_id' => 'nullable|exists:offers,id',
             'description' => 'nullable|string',
             'customer_name' => 'required|string',
             'customer_email' => 'required|email',
@@ -32,6 +33,29 @@ class PaymentController extends Controller
             'reservation_date' => 'nullable|date|after_or_equal:today',
             'reservation_time' => 'nullable',
             'message' => 'nullable|string',
+        ]);
+
+        $priceSource = null;
+        $description = $request->description;
+
+        if ($request->filled('offer_id')) {
+            $priceSource = Offer::find($request->offer_id);
+            $description = $description ?: $priceSource?->title;
+        } elseif ($request->filled('service_id')) {
+            $priceSource = Service::find($request->service_id);
+            $description = $description ?: $priceSource?->name;
+        }
+
+        if (!$priceSource || $priceSource->price < 1) {
+            return response()->json([
+                'success' => false,
+                'message' => 'يرجى اختيار خدمة أو عرض له سعر صحيح قبل الدفع الإلكتروني',
+            ], 422);
+        }
+
+        $request->merge([
+            'amount' => $priceSource->price,
+            'description' => $description ?: 'حجز موعد - عيادة ميثان',
         ]);
 
         $result = $this->paymentService->sendPayment($request);
