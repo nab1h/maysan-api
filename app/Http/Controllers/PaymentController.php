@@ -35,27 +35,31 @@ class PaymentController extends Controller
             'message' => 'nullable|string',
         ]);
 
-        $priceSource = null;
-        $description = $request->description;
+        $amount = 0;
+        $descriptionParts = [];
 
-        if ($request->filled('offer_id')) {
-            $priceSource = Offer::find($request->offer_id);
-            $description = $description ?: $priceSource?->title;
-        } elseif ($request->filled('service_id')) {
-            $priceSource = Service::find($request->service_id);
-            $description = $description ?: $priceSource?->name;
+        if ($request->filled('service_id')) {
+            $service = Service::find($request->service_id);
+            $amount += (float) $service->price;
+            $descriptionParts[] = $service->name;
         }
 
-        if (!$priceSource || $priceSource->price < 1) {
+        if ($request->filled('offer_id')) {
+            $offer = Offer::find($request->offer_id);
+            $amount += (float) $offer->price;
+            $descriptionParts[] = $offer->title;
+        }
+
+        if ($amount < 1) {
             return response()->json([
                 'success' => false,
-                'message' => 'يرجى اختيار خدمة أو عرض له سعر صحيح قبل الدفع الإلكتروني',
+                'message' => 'Please choose a service or offer with a valid price before online payment.',
             ], 422);
         }
 
         $request->merge([
-            'amount' => $priceSource->price,
-            'description' => $description ?: 'حجز موعد - عيادة ميثان',
+            'amount' => $amount,
+            'description' => $request->description ?: (implode(' + ', $descriptionParts) ?: 'Reservation appointment - Maysan Clinic'),
         ]);
 
         $result = $this->paymentService->sendPayment($request);
@@ -64,12 +68,13 @@ class PaymentController extends Controller
             return response()->json([
                 'success' => true,
                 'url' => $result['url'],
+                'amount' => $amount,
             ]);
         }
 
         return response()->json([
             'success' => false,
-            'message' => $result['message'] ?? 'حدث خطأ أثناء إنشاء عملية الدفع',
+            'message' => $result['message'] ?? 'An error occurred while creating the payment.',
         ], 400);
     }
 

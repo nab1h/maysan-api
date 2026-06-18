@@ -95,7 +95,7 @@
                                 <select name="service_id" id="serviceSelect" class="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#135158] transition text-sm">
                                     <option value="">اختاري القسم أولاً</option>
                                     @foreach($services as $service)
-                                    <option value="{{ $service->id }}" data-department="{{ $service->department_id }}" data-price="{{ $service->price }}" class="service-option">{{ $service->name }}</option>
+                                    <option value="{{ $service->id }}" data-department="{{ $service->department_id }}" data-price="{{ $service->price }}" data-name="{{ $service->name }}" class="service-option">{{ $service->name }} - {{ $service->price }} SAR</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -178,6 +178,27 @@
                                     </div>
                                 </div>
 
+                            </div>
+
+                            <div id="invoiceSummary" class="sm:col-span-2 bg-gray-50 border border-gray-200 rounded-2xl p-4">
+                                <div class="flex items-center justify-between gap-3 mb-3">
+                                    <span class="text-sm font-bold text-gray-800">Invoice Summary</span>
+                                    <span class="text-xs font-semibold text-gray-400">SAR</span>
+                                </div>
+                                <div class="space-y-2 text-sm">
+                                    <div id="invoiceServiceRow" class="hidden items-center justify-between gap-3">
+                                        <span id="invoiceServiceName" class="text-gray-600 truncate">Service</span>
+                                        <span class="font-bold text-gray-900"><span id="invoiceServicePrice">0</span> SAR</span>
+                                    </div>
+                                    <div id="invoiceOfferRow" class="hidden items-center justify-between gap-3">
+                                        <span id="invoiceOfferName" class="text-gray-600 truncate">Offer</span>
+                                        <span class="font-bold text-gray-900"><span id="invoiceOfferPrice">0</span> SAR</span>
+                                    </div>
+                                    <div class="border-t border-gray-200 pt-3 mt-3 flex items-center justify-between gap-3">
+                                        <span class="font-bold text-[#135158]">Total</span>
+                                        <span class="text-xl font-black text-[#135158]"><span id="invoiceTotal">0</span> SAR</span>
+                                    </div>
+                                </div>
                             </div>
 
                             <!-- التاريخ والوقت -->
@@ -354,6 +375,13 @@
         const securePayNote = document.getElementById('securePayNote');
         const paymentAmountWrapper = document.getElementById('paymentAmountWrapper');
         const paymentAmountInput = document.getElementById('paymentAmountInput');
+        const invoiceServiceRow = document.getElementById('invoiceServiceRow');
+        const invoiceServiceName = document.getElementById('invoiceServiceName');
+        const invoiceServicePrice = document.getElementById('invoiceServicePrice');
+        const invoiceOfferRow = document.getElementById('invoiceOfferRow');
+        const invoiceOfferName = document.getElementById('invoiceOfferName');
+        const invoiceOfferPrice = document.getElementById('invoiceOfferPrice');
+        const invoiceTotal = document.getElementById('invoiceTotal');
 
         let selectedOfferData = null;
 
@@ -504,12 +532,11 @@
         }
 
         serviceSelect.addEventListener('change', function() {
-            if (selectedOfferData) {
-                offerSelect.value = '';
-                hideOfferCard();
-            }
-
             setPaymentAmount();
+        });
+        serviceSelect.addEventListener('input', setPaymentAmount);
+        offerSelect.addEventListener('input', function() {
+            offerSelect.dispatchEvent(new Event('change'));
         });
 
         // ===== تغيير طريقة الدفع =====
@@ -517,18 +544,53 @@
             radio.addEventListener('change', updateSubmitButton);
         });
 
-        function getPaymentAmount() {
-            if (selectedOfferData?.price) {
-                return selectedOfferData.price;
-            }
+        function parsePrice(value) {
+            const price = Number(String(value || '').replace(/,/g, ''));
+            return Number.isFinite(price) ? price : 0;
+        }
 
+        function getPaymentAmount() {
             const selectedService = serviceSelect.options[serviceSelect.selectedIndex];
-            return selectedService?.dataset?.price || '';
+            const servicePrice = parsePrice(selectedService?.dataset?.price);
+            const offerPrice = parsePrice(selectedOfferData?.price);
+            const total = servicePrice + offerPrice;
+
+            return total > 0 ? total.toFixed(2) : '';
         }
 
         function setPaymentAmount() {
+            updateInvoiceSummary();
             paymentAmountInput.value = getPaymentAmount();
             updateSubmitButton();
+        }
+
+        function updateInvoiceSummary() {
+            const selectedService = serviceSelect.options[serviceSelect.selectedIndex];
+            const servicePrice = parsePrice(selectedService?.dataset?.price);
+            const offerPrice = parsePrice(selectedOfferData?.price);
+            const total = servicePrice + offerPrice;
+
+            if (servicePrice > 0) {
+                invoiceServiceName.textContent = selectedService.dataset.name || selectedService.textContent.trim();
+                invoiceServicePrice.textContent = servicePrice.toFixed(2);
+                invoiceServiceRow.classList.remove('hidden');
+                invoiceServiceRow.classList.add('flex');
+            } else {
+                invoiceServiceRow.classList.add('hidden');
+                invoiceServiceRow.classList.remove('flex');
+            }
+
+            if (offerPrice > 0) {
+                invoiceOfferName.textContent = selectedOfferData.title;
+                invoiceOfferPrice.textContent = offerPrice.toFixed(2);
+                invoiceOfferRow.classList.remove('hidden');
+                invoiceOfferRow.classList.add('flex');
+            } else {
+                invoiceOfferRow.classList.add('hidden');
+                invoiceOfferRow.classList.remove('flex');
+            }
+
+            invoiceTotal.textContent = total.toFixed(2);
         }
 
         function updateSubmitButton() {
@@ -593,7 +655,7 @@
                     },
                     body: JSON.stringify({
                         offer_id: selectedOfferData?.id || null,
-                        description: selectedOfferData?.title || null,
+                        description: null,
                         customer_name: name,
                         customer_email: email,
                         customer_phone: phone,
@@ -721,6 +783,8 @@
                 branchSelect.dispatchEvent(new Event('change'));
             }
         }
+
+        setPaymentAmount();
     });
 </script>
 
