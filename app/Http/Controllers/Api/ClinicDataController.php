@@ -10,6 +10,7 @@ use App\Models\Location;
 use App\Models\Offer;
 use App\Models\Service;
 use Illuminate\Http\Request;
+use App\Models\BeforeAfter;
 
 class ClinicDataController extends Controller
 {
@@ -116,4 +117,19 @@ class ClinicDataController extends Controller
             'data' => $offers,
         ]);
     }
+
+
+    public function beforeAfters()
+    {
+        $beforeAfters = BeforeAfter::query()
+            ->latest()
+            ->take(8)
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $beforeAfters,
+        ]);
+    }
+
 }

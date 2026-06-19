@@ -21,6 +21,7 @@ Route::get('/departments', [ClinicDataController::class, 'departments']);
 Route::get('/services', [ClinicDataController::class, 'services']);
 Route::get('/doctors', [ClinicDataController::class, 'doctors']);
 Route::get('/offers', [ClinicDataController::class, 'offers']);
+Route::get('/results', [ClinicDataController::class, 'beforeAfters']);
 
 
 // End authantication =============
