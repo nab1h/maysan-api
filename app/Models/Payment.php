@@ -16,6 +16,7 @@ class Payment extends Model
         'amount',
         'status',
         'transaction_id',
+        'return_url',
     ];
 
     public function branch()

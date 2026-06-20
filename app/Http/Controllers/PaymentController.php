@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Gift;
 use App\Models\Offer;
+use App\Models\Payment;
 use App\Models\Service;
 use App\Services\TapPaymentService;
 use Illuminate\Http\Request;
@@ -33,6 +35,7 @@ class PaymentController extends Controller
             'reservation_date' => 'nullable|date|after_or_equal:today',
             'reservation_time' => 'nullable',
             'message' => 'nullable|string',
+            'return_url' => 'nullable|string|max:1000',
         ]);
 
         $amount = 0;
@@ -83,9 +86,31 @@ class PaymentController extends Controller
         $transactionId = $this->paymentService->callBack($request);
 
         if ($transactionId) {
+            $giftRedirect = $this->giftRedirect($transactionId, 'paid');
+            if ($giftRedirect) {
+                return redirect()->away($giftRedirect);
+            }
+
+            $paymentRedirect = $this->paymentRedirect($transactionId, 'paid');
+            if ($paymentRedirect) {
+                return redirect()->away($paymentRedirect);
+            }
+
             return redirect()->route('payment.success', [
                 'transaction_id' => $transactionId,
             ]);
+        }
+
+        if ($request->filled('tap_id')) {
+            $giftRedirect = $this->giftRedirect($request->input('tap_id'), 'failed');
+            if ($giftRedirect) {
+                return redirect()->away($giftRedirect);
+            }
+
+            $paymentRedirect = $this->paymentRedirect($request->input('tap_id'), 'failed');
+            if ($paymentRedirect) {
+                return redirect()->away($paymentRedirect);
+            }
         }
 
         return redirect()->route('payment.failed');
@@ -101,5 +126,39 @@ class PaymentController extends Controller
     public function failed()
     {
         return view('payment-failed');
+    }
+
+    private function giftRedirect(string $transactionId, string $status): ?string
+    {
+        $gift = Gift::where('transaction_id', $transactionId)->first();
+
+        if (!$gift || !$gift->return_url) {
+            return null;
+        }
+
+        $separator = str_contains($gift->return_url, '?') ? '&' : '?';
+
+        return $gift->return_url . $separator . http_build_query([
+            'status' => $status,
+            'transaction_id' => $transactionId,
+            'gift_id' => $gift->id,
+        ]);
+    }
+
+    private function paymentRedirect(string $transactionId, string $status): ?string
+    {
+        $payment = Payment::where('transaction_id', $transactionId)->first();
+
+        if (!$payment || !$payment->return_url) {
+            return null;
+        }
+
+        $separator = str_contains($payment->return_url, '?') ? '&' : '?';
+
+        return $payment->return_url . $separator . http_build_query([
+            'status' => $status,
+            'transaction_id' => $transactionId,
+            'payment_id' => $payment->id,
+        ]);
     }
 }

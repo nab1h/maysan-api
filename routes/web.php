@@ -31,6 +31,7 @@ use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\DoctorController;
 use App\Http\Controllers\Admin\PartnerController;
 use App\Http\Controllers\Admin\HomeContentController;
+use App\Http\Controllers\Admin\GiftController as AdminGiftController;
 use App\Http\Controllers\Admin\PaymentController as AdminPaymentController;
 
 
@@ -115,6 +116,8 @@ Route::middleware('auth')->group(
                 Route::put('/testimonials/{id}/status', [TestimonialController::class, 'updateStatus'])->name('testimonials.update-status');
                 Route::delete('/testimonials/{id}', [TestimonialController::class, 'destroy'])->name('testimonials.destroy');
                 Route::get('/payments', [AdminPaymentController::class, 'index'])->name('payments.index');
+                Route::get('/gifts', [AdminGiftController::class, 'index'])->name('gifts.index');
+                Route::patch('/gifts/{gift}/consume', [AdminGiftController::class, 'consume'])->name('gifts.consume');
             });
 
             Route::get('/users', [UserController::class, 'index'])->name('users.index');

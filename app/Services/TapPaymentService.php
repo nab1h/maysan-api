@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Interfaces\PaymentGatewayInterface;
+use App\Models\Gift;
 use App\Models\Reservation;
 use App\Models\Payment; // ✅ إضافة موديل المدفوعات
 use Illuminate\Http\Request;
@@ -36,6 +37,7 @@ class TapPaymentService extends BasePaymentService implements PaymentGatewayInte
             'service_id' => $request->service_id,       // ✅ الخدمة
             'amount' => $request->amount,
             'status' => 'pending',
+            'return_url' => $request->return_url,
         ]);
 
         // ✅ 2. (اختياري) إنشاء سجل الحجز (Reservation) وربطه بالمدفوعات
@@ -146,6 +148,76 @@ class TapPaymentService extends BasePaymentService implements PaymentGatewayInte
         ];
     }
 
+    public function sendGiftPayment(Request $request, Gift $gift): array
+    {
+        $phone = $this->normalizeSaudiPhone($request->input('sender_phone') ?: $request->input('recipient_phone'));
+        $email = $request->input('sender_email') ?: 'no-reply@maysanclinic.com';
+
+        $data = [
+            'amount' => floatval($gift->amount),
+            'currency' => 'SAR',
+            'threeDSecure' => true,
+            'save_card' => false,
+            'description' => 'Gift payment - Maysan Clinic',
+            'statement_descriptor' => 'Maysan Gift',
+            'reference' => [
+                'transaction' => 'GIFT-' . $gift->id,
+                'order' => (string) $gift->id,
+            ],
+            'receipt' => [
+                'email' => true,
+                'sms' => true,
+            ],
+            'customer' => [
+                'first_name' => $gift->sender_name,
+                'middle_name' => '',
+                'last_name' => ' ',
+                'email' => $email,
+                'phone' => [
+                    'country_code' => '966',
+                    'number' => $phone,
+                ],
+            ],
+            'source' => [
+                'id' => 'src_all'
+            ],
+            'redirect' => [
+                'url' => $request->getSchemeAndHttpHost() . '/payment/callback'
+            ],
+            'metadata' => [
+                'gift_id' => (string) $gift->id,
+                'payment_type' => 'gift',
+            ],
+        ];
+
+        $response = $this->buildRequest('POST', '/v2/charges/', $data);
+        $responseData = $response->getData(true);
+
+        if ($responseData['success'] && isset($responseData['data']['transaction']['url'])) {
+            $transactionId = $responseData['data']['id'] ?? null;
+            $gift->update(['transaction_id' => $transactionId]);
+
+            return [
+                'success' => true,
+                'url' => $responseData['data']['transaction']['url'],
+            ];
+        }
+
+        $gift->update(['status' => 'failed']);
+
+        $errorMsg = 'Unknown Tap error';
+        if (isset($responseData['data']['errors'])) {
+            $errorMsg = json_encode($responseData['data']['errors']);
+        } elseif (isset($responseData['message'])) {
+            $errorMsg = $responseData['message'];
+        }
+
+        return [
+            'success' => false,
+            'message' => $errorMsg,
+        ];
+    }
+
     public function callBack(Request $request): ?string
     {
         $chargeId = $request->input('tap_id');
@@ -174,6 +246,11 @@ class TapPaymentService extends BasePaymentService implements PaymentGatewayInte
                 $payment->update(['status' => 'paid']);
             }
 
+            $gift = Gift::where('transaction_id', $transactionId)->first();
+            if ($gift) {
+                $gift->update(['status' => 'paid']);
+            }
+
             // تحديث جدول الحجوزات
             $reservation = Reservation::where('transaction_id', $transactionId)->first();
             if ($reservation) {
@@ -195,6 +272,11 @@ class TapPaymentService extends BasePaymentService implements PaymentGatewayInte
                     $payment->update(['status' => 'failed']);
                 }
 
+                $gift = Gift::where('transaction_id', $transactionId)->first();
+                if ($gift) {
+                    $gift->update(['status' => 'failed']);
+                }
+
                 $reservation = Reservation::where('transaction_id', $transactionId)->first();
                 if ($reservation) {
                     $reservation->update([
@@ -206,5 +288,24 @@ class TapPaymentService extends BasePaymentService implements PaymentGatewayInte
         }
 
         return null;
+    }
+
+    private function normalizeSaudiPhone(string $phone): string
+    {
+        $phone = preg_replace('/[^0-9]/', '', $phone);
+
+        if (str_starts_with($phone, '05')) {
+            return substr($phone, 1);
+        }
+
+        if (str_starts_with($phone, '9665')) {
+            return substr($phone, 3);
+        }
+
+        if (str_starts_with($phone, '966')) {
+            return substr($phone, 3);
+        }
+
+        return $phone;
     }
 }
